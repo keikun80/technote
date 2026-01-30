@@ -1,0 +1,46 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 11.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.7559.61 Safari/537.36 NetHelper70" version="29.3.4">
+  <diagram name="페이지-1" id="JE2TG3Ww1ZUnaTkDW1YU">
+    <mxGraphModel dx="538" dy="803" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-19" edge="1" parent="1" source="Ut7PJXfoAGKv4PO4PiSz-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="Ut7PJXfoAGKv4PO4PiSz-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="신규 EC2 시작" vertex="1">
+          <mxGeometry height="50" width="320" x="150" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-16" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="구 EC2 에서 어플리케이션 백업 후 Docker화" vertex="1">
+          <mxGeometry height="50" width="320" x="150" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-17" edge="1" parent="1" source="Ut7PJXfoAGKv4PO4PiSz-16" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="Ut7PJXfoAGKv4PO4PiSz-15" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="500" y="210" as="sourcePoint" />
+            <mxPoint x="550" y="160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-21" edge="1" parent="1" source="Ut7PJXfoAGKv4PO4PiSz-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Ut7PJXfoAGKv4PO4PiSz-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-18" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="docker화한 애플리케이션의 기능 검증" vertex="1">
+          <mxGeometry height="50" width="320" x="150" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-23" edge="1" parent="1" source="Ut7PJXfoAGKv4PO4PiSz-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="Ut7PJXfoAGKv4PO4PiSz-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-20" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="본래 사용하던 ELB에 신규 EC2를 연결" vertex="1">
+          <mxGeometry height="50" width="320" x="150" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-25" edge="1" parent="1" source="Ut7PJXfoAGKv4PO4PiSz-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="Ut7PJXfoAGKv4PO4PiSz-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-22" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="실트래픽을 일정한 비율로 (1/전체대수) 서비스에 투입" vertex="1">
+          <mxGeometry height="50" width="320" x="150" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="Ut7PJXfoAGKv4PO4PiSz-24" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="기능에 이상이 없는 경우 AS-IS 인스턴스를 제거" vertex="1">
+          <mxGeometry height="50" width="320" x="150" y="540" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
