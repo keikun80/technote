@@ -1,0 +1,47 @@
+AWS Technical Essentials (한국어)
+https://skillbuilder.aws/learn/K8C2FNZM6X/aws-technical-essentials-/T158S72U18
+
+Introduction to Amazon Virtual Private Cloud (VPC)
+https://skillbuilder.aws/learn/PH6Z6EVH8Z/introduction-to-amazon-virtual-private-cloud-vpc-/KQTDYUWHXN
+
+Configuring and Deploying VPCs with Multiple Subnets
+https://skillbuilder.aws/learn/4HWA8PME5S/configuring-and-deploying-vpcs-with-multiple-subnets-/5YZV13WFHJ
+
+Getting Started with Application Load Balancer (한국어)
+https://skillbuilder.aws/learn/72MYSKW681/getting-started-with-application-load-balancer-/2FSEFD1H2H
+
+AWS Networking Practical Approaches (한국어)
+https://skillbuilder.aws/learn/B6A3C8NAXG/aws-networking-practical-approaches-/9QQ1Q3UE3W
+
+AWS Network – Monitoring and Troubleshooting
+https://skillbuilder.aws/learn/G351ZT8UCX/aws-network--monitoring-and-troubleshooting-/2P85T6BY28
+
+AWS Identity and Access Management - Basics (한국어)
+https://skillbuilder.aws/learn/HC5WM451CY/aws-identity-and-access-management--basics-/47JPXTDHKD
+
+Introduction to AWS Identity and Access Management (IAM)
+https://skillbuilder.aws/learn/XFPX3M7HAQ/introduction-to-aws-identity-and-access-management-iam-/MT6TK15E48
+
+Managing the Application Lifecycle in Amazon ECS
+https://skillbuilder.aws/learn/6XRJ1KH9GC/managing-the-application-lifecycle-in-amazon-ecs-/M8YDQK59AN
+
+Managing Applications at Scale with Amazon ECS
+https://skillbuilder.aws/learn/W7ZQ4NH6WM/managing-applications-at-scale-with-amazon-ecs-/CM9H4HP9MS
+
+Lab - Using the AWS Systems Manager Run Command for Automation
+https://skillbuilder.aws/learn/GXKZKUE692/lab--using-the-aws-systems-manager-run-command-for-automation-/6K8BJ321UB
+
+AWS SimuLearn: Cloud Practitioner
+https://skillbuilder.aws/learning-plan/EKHCUEWUUC/aws-simulearn-cloud-practitioner-/99WAFXZGMT
+
+Architecting Serverless Applications
+https://skillbuilder.aws/learn/MRWENY7FSX/architecting-serverless-applications-/2VW1Y4BTC5
+
+Getting Started with AWS Storage
+https://skillbuilder.aws/learn/WQTG8AM8XJ/getting-started-with-aws-storage-/3C8SC1V27S
+
+AWS SAM
+https://catalog.workshops.aws/workshops/667d8814-18c9-4be9-bbc1-a6a3ffd2ba62/en-US
+
+AWS Event기반 아키텍쳐 구축 
+https://catalog.workshops.aws/workshops/63320e83-6abc-493d-83d8-f822584fb3cb
