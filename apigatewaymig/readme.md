@@ -5,12 +5,10 @@ API Gateway migration
 1st Gen
 ----------
 ##### Aim problem
-1. Reduce TCO of Tyk
+1. Reduce TCO of API Gateway
 2. Compability of URL Proxying
 
 ##### Reduce TCO of Tyk 
-Early 2023, We decide out api gateway change from tyk to kong, reason why tky's price is to high comapre with last year. 
-Tyk Gateway is open source and can use freely until now. they change pricing model for enterprice customer and license of exclude gateway.
 2022년과 2023년 사이에 Tyk는 가격 정책을 변경하면서 기존보다 2배이상의 연간 라이선스 비용을 요구하려 했습니다. 
 그래서 저희는 tyk를 대체할 수 있는 다른 API Gateway를 찾았고 AWS API Gateway와 KrakenD와 kong을 비교했고, kong을 선택하게 되었는데 이유는 Kong과 Konga를 \
 조합하면 적당한 GUI 환경을 사용하면서 Tyk 대비 0원에 가까운 비용으로 유지를 할 수 있다는 계산과 API  인건비는 tyk이든 kong이든 동일하기 때문입니다.
@@ -78,17 +76,21 @@ kong  서버들을 다시 살펴보게 되었습니다.
 *네트워크 사용량*
 
 
-앞선 migration에서 m5.large로 EC2 인스턴스를 선택 한 뒤 다시 선정한 인스턴스는  t3.medium 인데, 위 그래프의 Usage 상태는 t3.medium 로 구성된 4대의 서버를 운영하면서 샘플링한 2개의 서버 입니다. 
+위 그래프의 Usage 상태는 t3.medium 로 구성된 4대의 서버를 운영하면서 샘플링한 2개의 서버 입니다. 
+ 4대 모두 비슷한 사용량을 보이고 있지만  gw.auth의 경우 특히 낮은 Usage를 보이는 관게로 그리고 ASG를 이용해서 동적으로 수량을 관리하면 
+ 성능에 문제가 없을 것 같아서 이번 마이그레이션에서는 t3.medium을 사용하기로 했습니다. CPU CreditBalance를 모니터링 하면 인스턴스 타입에 대한 가이드가 될 것으로 판단했습니다.
 
-##### 도에인별 통합
-API Gateway를 서비스 하는 도메인이 총 7개 정도인데 이것을 목적에 따라 3개로 통합 하는 작업을 수행했습니다. 
-비슷한 역할을 하는 것과 접근하는 대상에 따라서 분류를 한 것이고 이것을 이용해서 기존에  있는 5개의 AWS Classic Load Balancer를 1개의 AWS Application Load Balancer로 
-교체를 했습니다.
-ALB로 마이그레이션을 하면 Target Group(이하 TG)을 사용하기 때문에 HTTP Header , Context-path 등으로 트래픽을 구분할 수 있고 각 TG별 메트릭을 활용해서 
-모니터링을 고도화 할 수 있습니다. \
+##### 도에인 통합
+API Gateway를 서비스 하는 도메인은 총 7개로 각각의 목적에 따라 분리되어 있었지만 시간이 지나 의미가 사라진 목적도 있어서 도메인을 3개로 통합 하는 작업을 수행했습니다. 
+3개로 만든 기준은 출발지를 기준으로 3개로 구분했으며 가 Domain과 Context-path의 조합으로  ALB에서 Target Group(이하 TG)를 구분하도록 설정했습니다.
+ALB로 마이그레이션을 하면 TG를 사용하기 때문에 HTTP Header , Context-path 등으로 트래픽을 구분할 수 있고 각 TG별 메트릭을 활용해서 모니터링을 고도화 할 수 있습니다. \
 **ALB로 이전을 하기 위해서는 [Classic Load Balancer 마이그레이션] 문서를 참고하시기 바랍니다**.
 kong v2에서 v3로 이전을 위해서는 ALB의 Listener 에서 TG별 Weight를 이용해서 버전 간의 문제를 모니터링 하기로 했습니다. 
-이 때 버전에 따라서 URL처리 방식이 다른 경우가 발견되어서 문제를 수정하고 적용을 계속했습니다. 
+kong v2를 위한  TG를 생성해서 설정을 완료한 뒤 테스트를 후 모든 도메인의 CNAME과 A 레코드를 신규 LB를 가리키도록 변경하도록 했습니다. 
+이 때 신규 LB는 kong v2를 가리키는 TG만 연결했습니다.이렇게 신규 LB에서 kong v2를 이용해서 서비스를 제공하도록 했습니다, 
+
+###### kong upgrade
+kong을 업그레이드 하기 위해서는 [deck]을 이용해서 수월하게 진행 할 수 있습니다. 
 
 ##### Kong v3(OSS) 적용
 아래 다이어그램은 최종적으로 구성된 API Gateway의 구성입니다. 
@@ -102,13 +104,32 @@ Latency의 증가가 보이지 유의미하게 관측되지 않아서 4대에서
 
  | resource | type | Qty | Unit price/month | amount / month |
  | --- | --- | --- | --- | --- |
- | EC2              |m3..medium          | 3 | $23 | $69|
+ | EC2              |m3..medium    | 3 | $23 | $69|
 | RDS               | db.t3.small      | 1 |  $32  | $32|
 | 계||||$101|  
 
 기존에 5대에서 3대로 (관리용 1대)줄이면서 **53%** 절감효과를 달성했고  ASG를 이용한 **Auto healing 구현으로  RTTM은 5분 이내**로 달성하게 되었습니다. 
  Database의 SLA는 [Amazon RDS 서비스 수준 계약]을 따릅니다. 
  
+ ###### 정리
+인프라 월간비용변화
+  
+ | resource | type | Qty | Unit price | amount|
+|
+ |EC2  |  m5.xlarge | 9 | $107 |  $963 |
+|ElastiCache | cache.m5.xlarge | 3 | $190 | $570 
+1차 합계|||| **$1,533** (100%)
+| EC2              |m5..xlarge          | 5 | $107 | $535|
+| RDS               | db.t3.small      | 1 |  $32  | $32|
+| 2차 합계||||**$567** , 이전 대비 63%|  
+ | EC2              |m3..medium          | 3 | $23 | $69|
+| RDS               | db.t3.small      | 1 |  $32  | $32|
+| 2차 합계||||**$101** , 이전 대비 82% |  
+
+
+
 *금액산정 시 기준:  EC2 Reserved Instance , no-upfront , 1year , exclude VAT*
  [Classic Load Balancer 마이그레이션]: https://docs.aws.amazon.com/ko_kr/elasticloadbalancing/latest/userguide/migrate-classic-load-balancer.html
  [Amazon RDS 서비스 수준 계약]: https://aws.amazon.com/ko/rds/sla/
+ [deck]: https://developer.konghq.com/deck/
+ 
