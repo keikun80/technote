@@ -29,7 +29,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="y5eXmJCCwLook2cW4Rwl-7" parent="1" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elastic_load_balancing;" value="gw.fm" vertex="1">
-          <mxGeometry height="60" width="60" x="350" y="260" as="geometry" />
+          <mxGeometry height="60" width="60" x="360" y="260" as="geometry" />
         </mxCell>
         <mxCell id="y5eXmJCCwLook2cW4Rwl-45" edge="1" parent="1" source="y5eXmJCCwLook2cW4Rwl-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="y5eXmJCCwLook2cW4Rwl-41">
           <mxGeometry relative="1" as="geometry" />
@@ -53,7 +53,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="y5eXmJCCwLook2cW4Rwl-14" parent="1" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.compute;" value="konga container" vertex="1">
-          <mxGeometry height="60" width="60" x="550" y="600" as="geometry" />
+          <mxGeometry height="60" width="60" x="540" y="600" as="geometry" />
         </mxCell>
         <mxCell id="y5eXmJCCwLook2cW4Rwl-46" edge="1" parent="1" source="y5eXmJCCwLook2cW4Rwl-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="y5eXmJCCwLook2cW4Rwl-41">
           <mxGeometry relative="1" as="geometry" />
