@@ -1,60 +1,74 @@
-스케줄러 개선의 여정
-=================
+Jenkins를 이용한 배치 스케줄러 구축
+========================
 
-#### 무엇이 문제였나?
-최초에 스케줄러를 구성할 때 공급업체가 있는 솔루션을 도입했습니다. 
-비즈니스의 특성상 배치가 중요하지 않았던 시절의 요건은 단순했습니다.
-사실 이 솔루션은 스케줄링만 하는 솔루션이 아니었기에 본래 기능인 ETL에 있는 스케줄러 기능을 이용해서 batch를 호출해서 하자는 
-간단해 보이는 요구사항을 품어준 것입니다. 그런데 ETL도 Active-Passive 구조로 가야 하니까. 겸사겸사 가 가능해 보였습니다. 
-그런데 첫 장애 발생 후 도출된 문제는 Active-Passive는 맞는데 자동은 아니었다는 겁니다. 
-"서버가 중지되면 다른 예비가 작동하면 됩니다."라는 단순한 Active-Passive 구성이었습니다.
+#### 배경 
+사내 통합 스케줄러 서버의 유지보수계약이 종료되면서  각 애자일 그룹별로 배치 스케줄러를 구축 요구가 제기 되었습니다. 
+
+#### 문제
+1. 한대의 스케줄러에서 장애 발생 시 3개 애자일 그룹의 배치 작업이 중지 된다. 
+2. HA 구성이 수동으로 되어 있다. 
+3. RTTM, RTO 그밖에 모니터링 지표가 설정되어 있지 않다. 
 ![최초의 구조](scheduler_as_is_1.drawio.png "그림 1 최초의 구성")
 
-사람이 장애를 인지하면 직접 Passive 서버로 접속해서 Active 서버를 fencing하고 Passive 서버에서 ETL/스케줄링 프로세스를 실행시켜야 하는 
-절차를 가지고 있었습니다. 
-그리고 Passive 서버에서 ETL/스케줄링 작업 수행하다가 다시 Active 서버로 이전하려면 위의 과정을 역순으로 진행해야 합니다. 
-Passive 서버를 중지하고 Passive 서버에서 수행된 모든 로그파일과 DB를 다시 Active 서버로 동기화한 다음 Active 서버에서 
-ETL/스케줄링 프로세스를 실행시켜야 하는 Active-Passive 구조로 되어 있었습니다. 
-이건 운영자가 24시간 대기하지 않는다면 장애 시간이 길어지는 것은 물론 Fail back을 위해서 모든 작업 중단해야 한다는 점입니다. 
-장애 처리를 위해서 마지막에 또 장애를 가져야 한다니? 이건 개선점입니다. 
+최초의 구성에서는 사람이 장애를 인지하면 직접 Passive 서버로 접속해서 Active 서버를 fencing하고 Passive 서버에서 ETL/스케줄링 프로세스를 실행시켜야 하는  절차를 가지고 있었습니다. 
+그리고 Passive 서버에서 ETL/스케줄링 작업 수행하다가 다시 failback을 하려면 Active 서버로 위의 과정을 역순으로 진행해야 했습니다. 
+이건 운영자가 24시간 대기하지 않는다면 장애 시간이 길어지는 것은 물론 failback을 하는때에도  모든 스케줄링 작업이 중단되는 예정된 장애를 초래하는 구성입니다.
 
+#### 설계 
+설계의 중점은 RTO, RTTM의 개선과 서버간의 장애 전파 격리를 염두하고 진행 했습니다.
+기본 요구 사항
+1. AWS ASG를 이용해서 Auto Healing 구현
+2. AWS EFS를 이용해서 각 인스턴스가 사용하는 Permanent Storage를 제공
+3. ASG에 EC2 ,ELB 헬스체크를 이용해서 스케줄러 자체의 상태를 모니터링 하도록 구성 
+4. AWS Cloudwatch Alarm을 이용해서 이상 상태 발생 시 담당자에게 알람 전송
 
-#### 1차 개선 
-##### 일단 동기화를 줄여보자
-개선하기 위해서 아래와 같이 구성했습니다. 일단 인수인계를 받은 내용으론 DB를 fail back 해야 하므로 전문 엔지니어가 와야 하고
-다운 시간이 필요하다고 이야기했었기 때문에 저는 복원을 위해서 DB를 하나로 볼 수 있도록 구성했습니다. 
-DB를 Master-replica로 구성한들 큰 의미는 없을 테고 차라리 하나의 DB를 바라보고 있도록 하는 게 서비스 복원 시간을 줄이는 데 효율적이라고 판단했습니다. 
-![1차 개선](scheduler_as_is_2.drawio.png "그림 2 1차 개선")
-이렇게 개선해서 DB 동기화 시간은 0초로 만들었습니다. 
-그런데 다시 새벽 시간대에 장애가 발생하고 Fail back 하려는 시점에 또 엔지니어가 방문해야 하기 때문에 낮에 다시 다운타임을 가져야 한다는 내용을 접했습니다.
-##### 복병이 있더라
-이유는 ETL/스케줄러 프로세스가 만드는 히스토리성 자료들을 file로 생성한다는 이야기였습니다.
-DB에 뭔가를 기록하고 그걸 동기화한다고 하더니 file로 보관하는 자료가 또 있던 것이었습니다. 
+![설계 안](scheduler_to_be_2.drawio.png "그림1 설계")
 
-#### 2차 개선
-##### 스케줄러를 바꾸자
-이상한 상황에 맞춰서 솔루션을 바꾸기로 결심했습니다. 
-![2차 개선](scheduler_to_be_1.drawio.png "그림 3 2차 개선")
-요건을 정리하면
-* Active - Passive 구조 일 것(자동 Failerover)
-* 스케줄링에 의한 호출은 1회만 되어야 한다. 
-* 스케줄링은 작업간의 의존성이 있을 수 있다.
-
-간단하게 고민해 보고 CI/CD 파이프라인에서 사용하는 Jenkins를 사용하기로 했다. 이미 사용하고 있는 데다 웹상에서 트러블슈팅에 대한 자료도 많고 플러그인도 많고 유명하면 어떻게든 
-쓸만한 결과물이 나온다는 지론이 있는지라 고민을 깊게 하지 않았습니다. 
-일단 기본 구조는 위의 그림처럼 하고 중점을 준 지점은 인스턴스가 한 번에 1대만 구동되어야 할 것, 모니터링을 위한 prometheus 와 grafana를 내장하는 것으로 결정했습니다. 
-일단 기본 환경은 AWS에서 EC2를 이용해서 서버를 생성하고 인스턴스의 Auto Healing을 위해서 ASG(Auto Scaling Groups)를 이용하고 파일 저장소로는 AWS EFS이용하고
-이런 EC2 + EFS 와 Userdata를 이용해서 서버를 구성하기 위해서 Launch Template를 이용해서 서버를 구성했습니다. 
-모든 설정을 세세히 살펴보지 않고  asg의 옵션 중 하나만 살펴보려고 합니다. 
-ASG 에서 한 번에 하나의 인스턴스만 구동시키기 위해서는 "Instance maintenance policy"에서 Replacement behavior를 Terminate and launch 로 설정하고 
-Min Healthy Percentage를 0으로  Max healthy percentage 를 100으로 하면 인스턴스를 교체할 때 EC2 인스턴스가 꺼진 뒤 시작으로 됩니다. 
-한번에 하나만 구동되고 있어야 하는 상황에서는 꼭 필요한 옵션입니다. 
-
-인스턴스가 동적으로 변하는 환경에서 모니터링을 하는 방법은 AWS Cloudwatch를 쓰는 방법이 제일 좋고 권장됩니다. 혹은 사용 모니터링 솔루션을 사용하면 걱정 없겠지만 
-저희는 Prometheus를 주력으로 사용하고 이것은 구동시에 prometheus.yml을 참고로 모니터링 대상을 scrap 합니다. 
-
-그래서 이번 작업에는 젠킨스 + 그라파나 + 프로메테우스 + 노드 익스포터 +cAdvisor를 모두 하나로 묶어 패키지화 하기로 했습니다. 
-그래서 docker compose 를 이용해서 container들을 제어하기로 했습니다. 
+##### 컨테이너 환경 설치
+아래의 명령으로  docker와 docker-compose를 설치 합니다. 
+```
+# Installing Docker
+sudo dnf install -y docker
+sudo usermode -aG docker appe
+sudo systemctl enable --now docker 
+```
+docker-compose 설치
+```
+# Installing docker-compose
+sudo mkdir -p /usr/local/lib/docker/cli-plugins/
+sudo curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+```
+우리의 환경에 맞는 Jenkins docker image를 빌드 합니다. 
+이 때 내장 시킬 플러그인이나 설정값을 파악하기 위해서 에자일 그룹에게 먼저 Native 환경에서 설치된 Jenkins를 제공하고 피드백을 받아서 플러그인과 설정을 수집했습니다.
+아래의   Dockerfile을 이용해서 jenkins image 를 빌드 합니다. 
+```
+#Dockerfile
+FROM jenkins/jenkins:2.530.2-jdk21
+USER root
+RUN apt-get update && apt-get install -y lsb-release
+RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
+  https://download.docker.com/linux/debian/gpg
+RUN echo "deb [arch=$(dpkg --print-architecture) \
+  signed-by=/usr/share/keyrings/docker-archive-keyring.asc] \
+  https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+RUN apt-get update && apt-get install -y docker-ce-cli  jq
+RUN apt-get install -y graphviz && apt-get install -y fonts-nanum-* && fc-cache -f -v
+USER jenkins
+RUN jenkins-plugin-cli --plugins "blueocean docker-workflow json-path-api"
+RUN jenkins-plugin-cli --plugins "depgraph-view:1.0.5"
+RUN jenkins-plugin-cli --plugins "extra-columns:1.27"
+RUN jenkins-plugin-cli --plugins "extended-timer-trigger:30.vb_fb_7092cccfa_"
+RUN jenkins-plugin-cli --plugins "disable-job-button:1.3.vf55949267366"
+RUN jenkins-plugin-cli --plugins "jobConfigHistory:1356.ve360da_6c523a_"
+```
+```
+sudo docker image build -t jenkins-scheduler . 
+```
+jenkins가 완성이 되었으면 모니터링을 위한 나머지 요소들까지 포함한 docker-compose.yaml을 만들어야 합니다.
+이 yaml에는 사용할 jenkins image와 이 서버를 모니터링 할 여러 요소들 (prometheus, grafana, node_exporter, cAdvisor)까지 하나의 명령으로 
+수행될 수 있도록 구성 합니다. 
 ```
 services:
   prometheus:
@@ -108,7 +122,7 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=true
       - TZ=Asia/Seoul
   jenkins:
-    image: jenkins/jenkins:latest
+    image: jenkins-scheduler:latest
     container_name: scheduler
     logging:
       driver: "json-file"
@@ -163,31 +177,55 @@ networks:
   scheduler-net:
     driver: bridge
 ```
-위와 같이 docker-compose.yml을 만들고 서버에 설치해서 구동 시켰습니다. 
-디렉토리 구조
+여기까지 설정하면 이제 docker-compose start 혹은 up 명령으로 모든 컨테이너를 구동시키고 jenkins, prometheus, grafana, node_exporter, cAdvisor까지 
+구동되는 것을 확인할 수 있습니다. 
+
+* grafana docker : http://grafana.com/docs/grafana/latest/setup-grafana/installation/docker/
+* prometheus docker : https://prometheus.io/docs/prometheus/latest/installation/
+* node exporter : https://hub.docker.com/r/prom/node-exporter
+* ref : https://medium.com/@sohammohite/docker-container-monitoring-with-cadvisor-prometheus-and-grafana-using-docker-compose-b47ec78efbc 
+
+##### 2. AWS EFS를 이용해서 각 인스턴스가 사용하는 Permanent Storage를 제공
+AWS EFS(Elastic File System)은 NFSv4를 기반으로 하는 네트워크 파일 시스템 입니다.
+젠킨스나 프로메테우스등이 파일을 기반으로 서비스 되기 때문에 ASG에 의해서 EC2 인스턴스가 변경되는 경우에도 모든 파일이 지속적으로 
+인계되어야 하기 때문에 AWS EFS를 사용하기로 결정 했습니다. 
+AWS EFS로 각 서버가 사용할 파일 시스템을 만들어서 EC2인스턴스에 연결해주면 작업은 끝난다. [AWS EFS 파일 시스템 생성](https://docs.aws.amazon.com/ko_kr/efs/latest/ug/creating-using-create-fs.html)
+이렇게 만들어진 EFS 볼륨에 docker-compose에 연관된 모든 파일이 저장되도록 설정한다.
 ```
--rw-r--r--.  1 root    root     2536 Jan 29 10:36 compose.yml
-drwxr-xr-x.  3 appexec appexec  6144 Jan 29 10:34 grafana
-drwxr-xr-x.  2 appexec appexec  6144 Jan 29 10:35 jenkins
-drwxr-xr-x. 18 appexec appexec 14336 Jan 30 05:52 jenkins_home
-drwxr-xr-x.  4 appexec appexec  6144 Jan 29 10:35 prometheus
+[root@scheduler scheduler]# ls -al
+total 2076
+-rw-r--r--.  1 appexec appexec       2537 Jan 29 12:06 compose.yml
+drwxr-xr-x.  3 appexec appexec    6144 Jan 29 07:25 grafana
+drwxr-xr-x.  2 appexec appexec    6144 Jan 29 07:56 jenkins
+drwxr-xr-x. 16 appexec appexec    6144 Feb 23 05:32 jenkins_home
+drwxr-xr-x.  4 appexec appexec    6144 Jan 29 07:26 prometheus
 ```
-결과적으로는 아래와 같이 컨테이너들이 구동되면서 모니터링과 스케줄링 모두 잘 수행 됩니다. 
-```
-root@dev scheduler]# docker ps -a
-CONTAINER ID   IMAGE                             COMMAND                  CREATED       STATUS                 PORTS                                                  NAMES
-3daed7c2dc2d  jenkins                      "/usr/bin/tini -- /u…"   3 hours ago   Up 3 hours             0.0.0.0:8080->8080/tcp, :::8080->8080/tcp, 0.0.0.0:50000->50000/tcp, :::50000->50000/tcp   scheduler
-3d522019ad43   prom/prometheus:latest            "/bin/prometheus --c…"   3 hours ago   Up 3 hours (healthy)   0.0.0.0:9090->9090/tcp, :::9090->9090/tcp                                                  prometheus
-21d1a23e9742   gcr.io/cadvisor/cadvisor:latest   "/usr/bin/cadvisor -…"   3 hours ago   Up 3 hours (healthy)   0.0.0.0:9080->8080/tcp, :::9080->8080/tcp                                                  cadvisor
-fa027db9c01c   grafana/grafana:latest            "/run.sh"                3 hours ago   Up 3 hours             0.0.0.0:3000->3000/tcp, :::3000->3000/tcp                                                  grafana
-20aca702949e   prom/node-exporter:latest         "/bin/node_exporter …"   3 hours ago   Up 3 hours             0.0.0.0:9100->9100/tcp, :::9100->9100/tcp                                                  node-exporter
-```
-#### 결론
-Active-Passive 구조로 서버 장애 발생 시 최대 10분안에 자동 복구 되는 시스템을 만들었습니다. 
-또한 컨테이너 기반으로 구성해서 docker compose 명령으로 쉽게 중지와 시작을 제어할 수 있고, EFS를 이용해서 EC2 인스턴스가 바뀌더라도 파일의 동기화와 같은 
-소모적인 작업을 하지 않아도 되도록 구성했습니다. 
-기존에는 MTTR은 Failback기준으로 최대 10시간 , RTO는 최대 4시간 걸렸던 이력이 있습니다.  
-하지만 개선 작업으로 MTTR과 RTO가 모두 최대 10분으로 장애 복구에 대한 정확한 시간 계산이 가능해졌습니다. 
-비용적인 측면에서는 m5.4xlarge 2대가 m5.xlarge 3대로 변경되었습니다. 월 1,378 USD 가 516 USD로 절감되었고 (62%)
- MTTR 기존 대비 98% , RTO 기존 대비 95% 개선되었습니다. 
- 
+
+##### 3. ASG에 EC2 ,ELB 헬스체크를 이용해서 스케줄러 자체의 상태를 모니터링 하도록 구성 
+AWS ALB에서 health check 옵션을 다음과 같이 세팅 한다. 
+젠킨스 타겟그룹,  그라파나 타겟그룹, 프로메테우스 타겟그룹을 생성하고 각 타겟그룹의 특성에 맞는 health check 파라메터를 입력한다. 
+![알람설정](alarm.drawio.png)
+* Health checks for Application Load Balancer target groups: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/target-group-health-checks.html
+##### 4. AWS Cloudwatch Alarm을 이용해서 이상 상태 발생 시 담당자에게 알람 전송
+AWS CloudWatch SNS을 이용해서 SMS(문자메시지)를 받기 위해선 리전에 따라 다르지만 우리가 사용하는 리전은 SMS발송이 안되기 때문에 
+부득이하게 다른 리전을 사용하게 되면서 발생한 문제가 AWS CloudWatch Alarm을 이용해서 SNS에 직업 호출하지 못한다는 문제가 있다. 
+따라서 AWS CloudWatch에서 AWS Lambda를 호출하고 이 Lambda가 다른 리전에 있는 SNS에 메시지를 발송할 수 있도록 해야 한다. 
+* Invoke a Lambda function from an alarm https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/alarms-and-actions-Lambda.html
+
+##### EFS 비용 이슈
+EFS는 Elastic, Provisioned, Burst  이렇게 3종류의 옵션이 있다. 
+1. Elastic : 제일 비싸지만 가장 탄력적을 운영된다. 보통 Throughput Utilize 를 모니터링하면 바닥에 붙어 다닌다. 
+2. Provisioned: 정해진  IOPS와 throughput을 제공받고 정한 범위에서는 성능이 준수하다. 
+3. Burst : EC2의 T계열에서 볼 수 있는  CPU Burst와 같다. IO Credit을 모두 소모하면 성능이 심각하게 떨어져서 운영환경에서는 사용하지 어렵다.
+처음에 Burst 로 했다가 IOCredit이 0에 도달한 후 Latency가 너무 느려져서 EC2들이 ASG에 의해서 모두 대체된 적인 있습니다. 
+현재는 Provisioned 로 사용 중이고 서비스에는 지장이 없습니다. Provisioned 로 바로 사용하려면 원하는  Throughput을 알아야하는데 이를 위해서 먼저  Elastic 으로 사용해보고
+Throughput을 특정하는 방법을 추천합니다. 
+
+
+##### 5. 예상비용
+예상비용 
+* 개발계 t3.large x 3 EA = $ 137.53 /월
+* 운영계 m5.xlarge x 3EA = $ 312.93 / 월 
+* EFS x 6EA = 운영 (495 * 3) + 개발(165 * 3)  =  $1,872 /월 
+합계 (약) $ 2,330 / 월 
+
